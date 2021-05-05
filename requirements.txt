@@ -1,4 +1,4 @@
-python-binance==0.7.10
+altair
 ccxt==1.47.72
 datatable==0.11.1
 DateTime==4.3
@@ -9,6 +9,8 @@ matplotlib==3.4.1
 numpy==1.20.2
 pandas==1.2.3
 plotly==4.14.3
+python-binance==0.7.10
 requests==2.25.1
 selenium==3.141.0
+streamlit
 Twisted==21.2.0
