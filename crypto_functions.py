@@ -285,7 +285,8 @@ def crypto_snapshot(df_or_csv, purchase_sum=None, fiat_out=0, missing_prices=Non
         apply(negative_color_red, subset=['$ Gain/(Loss)', '% Gain/(Loss)'])
 
     final_list = {'df_snap_summ':df_snap_summ,
-                 'pretty_summ':pretty_summ}
+                 'pretty_summ':pretty_summ,
+                 'df_summ':df_summ}
     
     return final_list
 

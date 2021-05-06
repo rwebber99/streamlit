@@ -117,6 +117,8 @@ if (st.button('Update Pricing') | True):
 
     st.set_option('deprecation.showPyplotGlobalUse', False)
     
+    '$'+str(round(f['cs']['df_summ'].iloc[0,3],0))
+    str(round(f['cs']['df_summ'].iloc[0,4]*100,0))+'%'
 #     if (genre=='Riches'):
     st.dataframe(f['cs']['pretty_summ'])
 
