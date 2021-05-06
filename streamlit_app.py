@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
 
 # secrets: https://share.streamlit.io/
+# streamlit run .\streamlit_app.py
 
 url = st.secrets["txAll_url"]
 path = url.replace('view.aspx', 'download.aspx')
@@ -117,8 +118,9 @@ if (st.button('Update Pricing') | True):
 
     st.set_option('deprecation.showPyplotGlobalUse', False)
     
-    'Gain/(Loss) $' + '${0:,.0f}'.format(str(f['cs']['df_summ'].iloc[0,3]))
-    'Gain/(Loss) %' + '{:.2%}'.format(str(f['cs']['df_summ'].iloc[0,4]))
+    st.text('Gain/(Loss)')
+    st.text('${0:,.0f}'.format(f['cs']['df_summ'].iloc[0,3]))
+    st.text('{:.2%}'.format(f['cs']['df_summ'].iloc[0,4]))
 #     if (genre=='Riches'):
     st.dataframe(f['cs']['pretty_summ'])
 
