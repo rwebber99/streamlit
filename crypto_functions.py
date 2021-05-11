@@ -175,8 +175,10 @@ def PP_port_donut(df_port):
     if not 'USDT' in excl:
         excl.append('USDT')
     excl_df = df_port.index.isin(excl)
-    plt.figure(figsize=[8, 6])
-    plt.pie(df_port[~excl_df]['Current Value'], labels=df_port[~excl_df].index)
+    df_plot = df_port[~excl_df]
+    fsize = 12 if len(df_port)>15 else 8
+    plt.figure(figsize=[fsize, fsize])
+    plt.pie(df_plot['Current Value'], labels=df_plot.index)
     
     ### add a circle at the center to transform it in a donut chart
     my_circle=plt.Circle( (0,0), 0.55, color='white')
@@ -191,16 +193,18 @@ def PP_dollar_by_coin(df_port):
     if not 'USDT' in excl:
         excl.append('USDT')
     excl_df = df_port.index.isin(excl)
-    plt.figure(figsize=[12, 4.8])
-#    dollar_by_coin = plt.bar(df_port[~excl_df].index, df_port[~excl_df]['Current Value'])
-    plt.bar(df_port[~excl_df].index, df_port[~excl_df]['Current Value'])
-    return(plt)
+    df_plot = df_port[~excl_df]
+    fsize = 16 if len(df_port)>15 else 10    
+    plt.figure(figsize=[fsize, 4.8])
+    dollar_by_coin = plt.bar(df_plot.index, df_plot['Current Value'])
+    
+    return(dollar_by_coin)
 
 def PP_change_by_coin(df_port):
     c = ['C3' if v else 'C0' for v in df_port['Price Movement'] < 0]
     plt.bar(df_port.index, df_port['Price Movement'], color=c)
     plt.gca().yaxis.set_major_formatter(PercentFormatter(1))
-    change_by_coin = plt#.show()
+    change_by_coin = plt.show()
     return(change_by_coin)
 
 
@@ -285,8 +289,7 @@ def crypto_snapshot(df_or_csv, purchase_sum=None, fiat_out=0, missing_prices=Non
         apply(negative_color_red, subset=['$ Gain/(Loss)', '% Gain/(Loss)'])
 
     final_list = {'df_snap_summ':df_snap_summ,
-                 'pretty_summ':pretty_summ,
-                 'df_summ':df_summ}
+                 'pretty_summ':pretty_summ}
     
     return final_list
 
@@ -324,3 +327,30 @@ def PortfolioPerformanceDetail(cs_df_snap_summ, TTP_CostBasis, sort_by='Current 
     final_list = {'pretty_detail': pretty_detail,
                  'df_detail': csdss}
     return final_list
+
+
+
+
+def PortFamilyBreakdown(df):
+    """ Show relative portfolio makeup of ETH, BTC, Other, factoring in 3L holdings
+    df -- cs['df_snap_summ']
+    """
+    df = df.copy()
+    df.loc[df.index.str.contains(r'3L'), 'Current Value'] = df.loc[df.index.str.contains(r'3L'), 'Current Value'] * 3
+    total = df['Current Value'].sum()
+    eth = df.loc[df.index.str.contains(r'ETH'), 'Current Value'].sum()
+    btc = df.loc[df.index.str.contains(r'BTC'), 'Current Value'].sum()
+    other = total - eth - btc
+    dfFinal = pd.DataFrame()
+    dfFinal['Family'] = ['ETH', 'BTC', 'Other']
+    dfFinal['EFFECTIVE Value'] = [eth, btc, other]
+    dfFinal['Port %'] = dfFinal['EFFECTIVE Value'] / total
+    dfFinal.set_index('Family', inplace=True)
+    
+    
+    format_dict = {'EFFECTIVE Value':'${0:,.0f}', 
+                   'Port %': '{:.0%}',}
+    pretty_dfFinal = dfFinal.style.format(format_dict)
+    
+    
+    return pretty_dfFinal

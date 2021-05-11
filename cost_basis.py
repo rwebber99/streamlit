@@ -1,5 +1,9 @@
 # Transactions
 
+################################################
+### enter discontinued coins in tx_hist_prep ###
+################################################
+
 ## setup
 import os
 import pandas as pd
@@ -164,7 +168,11 @@ def tx_hist_prep(df, col_dict, floor_min = True):
     
     for dc in discontinued_coins.keys():
         dfnFilter = dfNew['pair'].str.contains(dc)
+        
         dfNew.loc[dfnFilter, 'quantity_purchased'] = dfNew.loc[dfnFilter, 'quantity_purchased'] * dc_conversion[dc]
+        colsToAdj = ['quantity_fee', 'total_cost_quote', 'unit_cost_quote']
+        for ca in colsToAdj:
+            dfNew.loc[dfnFilter, ca] = dfNew.loc[dfnFilter, ca] / dc_conversion[dc]
         dfNew['pair'] = dfNew['pair'].str.replace(dc, discontinued_coins[dc])
     
     return dfNew
@@ -218,7 +226,7 @@ def cbc_binance(pair, trade_time, quantity_purchased, quantity_fee, client):
         else:
             fee_per_unit = 0 #### if can't calc fees, set to zero to be conservative
     
-    total_cost_basis = basis_per_unit * quantity_purchased + fee_per_unit * quantity_fee
+    total_cost_basis = basis_per_unit * quantity_purchased #+ fee_per_unit * quantity_fee
     
     return total_cost_basis
 
@@ -380,13 +388,13 @@ def cbc_ccxt(pair, trade_time, quantity_purchased, quantity_fee, usd_symbol, exc
     if (quote == usd_symbol):
         if (not total_cost_quote==None):
             unit_cost = 1
-            total_cost_basis = total_cost_quote + quantity_fee
+            total_cost_basis = total_cost_quote #+ quantity_fee
             unit_coin = None
             quote_unit_count = total_cost_basis / unit_cost
         else:
             qh = quote_hist(exchange, trade_time, df=dfELM, base=base, quote=usd_symbol)
             unit_cost = qh['unit_cost']
-            total_cost_basis = unit_cost * (quantity_purchased + quantity_fee)
+            total_cost_basis = unit_cost * (quantity_purchased)# + quantity_fee)
             unit_coin = usd_symbol
             quote_unit_count = total_cost_basis / unit_cost
     else:
@@ -418,7 +426,7 @@ def cbc_ccxt(pair, trade_time, quantity_purchased, quantity_fee, usd_symbol, exc
 
 
             unit_cost = unit_cost_b
-            total_cost_basis = unit_cost * (quantity_purchased + quantity_fee)
+            total_cost_basis = unit_cost * (quantity_purchased)# + quantity_fee)
             unit_coin = quote
             quote_unit_count = total_cost_basis / unit_cost_q
 
@@ -488,6 +496,12 @@ def CombineTransactions(*args):
         for ar in args[1:]:
             df = df.append(ar).reset_index(drop=True)
     df.sort_values(by=['trade_time'], ignore_index=True, inplace=True)
+    df.drop_duplicates(inplace=True, ignore_index=True)
+    
+    ## check whether base/quote match pair
+#     dfat['base_in_pair'] = dfat.apply(lambda x: x.base in x.pair, axis=1)
+#     dfat['quote_in_pair'] = dfat.apply(lambda x: x.quote in x.pair, axis=1)
+#     dfat[~dfat['base_in_pair']]
     return df
 
 
@@ -626,19 +640,27 @@ def removePriorTx(df, dfALL_TRANSACTIONS):
     df -- saved processed transaction history 
     """
     dfor = df.copy()
-    dfTX = dfor[~dfor['order_id'].isin(dfALL_TRANSACTIONS.order_id)]
+    if (dfALL_TRANSACTIONS is not None):
+        dfTX = dfor[~dfor['order_id'].isin(dfALL_TRANSACTIONS.order_id)]
+    else:
+        dfTX = dfor.copy()
     return dfTX
 
 
-def ProcessCCXT(filepath, exchange_id, dfALL_TRANSACTIONS = None):
+def ProcessCCXT(df_or_csv, exchange_id, dfALL_TRANSACTIONS = None):
     """Go from downloaded csv to Transactions df to be combined
-    filepath -- downloaded transaction history csv
+    df_or_csv -- downloaded transaction history csv or df of same
     exchange_id -- for example, 'kucoin' or 'kraken' (https://github.com/ccxt/ccxt/wiki/Manual)
+    dfALL_TRANSACTIONS -- previously processed tx, to remove duplicates before concatenating
     """
     exchange_class = getattr(ccxt, exchange_id)
     exchange = exchange_class({'timeout': 30000, 'enableRateLimit': True,})
     
-    dfRaw = pd.read_csv(filepath)
+    if (not type(df_or_csv)==pd.DataFrame):
+        dfRaw = pd.read_csv(df_or_csv)
+    else:
+        dfRaw = df_or_csv.copy()
+    
     if (dfALL_TRANSACTIONS is not None):
         dfTemp = dfRaw.rename({ColDict[exchange_id]['order_id']: 'order_id'}, axis=1)
         dfRaw = removePriorTx(dfTemp, dfALL_TRANSACTIONS)
@@ -652,16 +674,39 @@ def ProcessCCXT(filepath, exchange_id, dfALL_TRANSACTIONS = None):
     return final_list
 
 
-def ProcessOther(filepath, dfALL_TRANSACTIONS = None):
+def ProcessOther(df_or_csv, dfALL_TRANSACTIONS = None):
     """Go from manually curated csv to Transactions df to be combined
-    filepath -- manually curated transaction history csv
+    df_or_csv -- manually curated transaction history csv or df of same
     dfALL_TRANSACTIONS -- df of all past processed transactions
     """
-    dfRaw = pd.read_csv(filepath, infer_datetime_format=True)
-    if (dfALL_TRANSACTIONS is not None):
-        dfRaw = tx_hist_prep_other(dfRaw)
+    if (not type(df_or_csv)==pd.DataFrame):
+        dfRaw = pd.read_csv(df_or_csv, infer_datetime_format=True)
+    else:
+        dfRaw = df_or_csv.copy()
+        
+#     if (dfALL_TRANSACTIONS is not None):
+    dfRaw = tx_hist_prep_other(dfRaw)
     dfFinal = removePriorTx(dfRaw, dfALL_TRANSACTIONS)
 
     final_list = {'dfTX': dfFinal,
                   'dfRawHist': dfRaw}
     return final_list
+
+
+
+
+
+def MultiTxFileAgg(txdir, fileid):
+    """ Find all csv files within txdir with names matching fileid, read in and combine, output single pd df
+    txdir -- dir to search for csv files
+    fileid -- string to match to filenames
+    """
+    txfiles = [f for f in os.listdir(txdir) if os.path.isfile(os.path.join(txdir, f))]
+    txfiles = [f for f in txfiles if (fileid in f and '.csv' in f)]
+    dfs = []
+    for f in txfiles:
+        dfs.append(pd.read_csv(os.path.join(txdir, f)))
+
+    big_frame = pd.concat(dfs, ignore_index=True)
+    big_frame.drop_duplicates(inplace=True, ignore_index=True)
+    return(big_frame)
