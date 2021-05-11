@@ -330,6 +330,15 @@ def PortfolioPerformanceDetail(cs_df_snap_summ, TTP_CostBasis, sort_by='Current 
 
 
 
+def PurchaseSum(TTP_CostBasis):
+    """ Calculate & return purchase_sum from TTP['CostBasis'] df
+    """
+    dfPurchaseSum = TTP_CostBasis[TTP_CostBasis['coin']=='USD'].copy()
+    dfPurchaseSum['total_cost_basis_usd'] = dfPurchaseSum['total_cost_basis_usd'] * (1 - 2*(dfPurchaseSum['quantity'] > 0))
+    purchase_sum = dfPurchaseSum['total_cost_basis_usd'].sum()
+    return purchase_sum
+
+
 
 def PortFamilyBreakdown(df):
     """ Show relative portfolio makeup of ETH, BTC, Other, factoring in 3L holdings
