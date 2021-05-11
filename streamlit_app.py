@@ -62,15 +62,9 @@ def finish_steps(TTP):
     ##
     dfplot = dfttpsum.copy().sort_values('Date')
     dfplot = dfplot.reset_index(level=['Date','Coin'])
-    excl = list(dfplot[dfplot['Coin'] == 'PUNDIX'].index)
-    if not 'USDT' in excl:
-        excl.append('USDT')
-    excl_df = dfplot.index.isin(excl)
-
+    dfp = dfplot.copy()
     ##
-    mask = [len(i)!=19 for i in TTP['CostBasis'].order_id]
-    dfSansKraken = TTP['CostBasis'][mask]
-    purchase_sum = dfSansKraken[dfSansKraken['coin']=='USD']['total_cost_basis_usd'].sum()
+    purchase_sum = crypto_fn.PurchaseSum(TTP['CostBasis'])
     fiat_out = 0
 
     cs = crypto_fn.crypto_snapshot(TTP['Portfolio'], purchase_sum = purchase_sum, fiat_out = fiat_out)
@@ -78,7 +72,7 @@ def finish_steps(TTP):
     ##
     PPD = crypto_fn.PortfolioPerformanceDetail(cs['df_snap_summ'], TTP['CostBasis'], sort_by='Current Value', ascending=False)
     
-    final_list = {'cs':cs, 'PPD':PPD, 'pretty_crypto_trans':pretty_crypto_trans, 'pltdata':dfplot[~excl_df]}
+    final_list = {'cs':cs, 'PPD':PPD, 'pretty_crypto_trans':pretty_crypto_trans, 'pltdata':dfp}
     return(final_list)
 
 TTP = read_data(path)
@@ -95,8 +89,8 @@ if (st.button('Update Pricing') | True):
     st.set_option('deprecation.showPyplotGlobalUse', False)
     
     st.text('Gain/(Loss)')
-    st.text('${0:,.0f}'.format(f['cs']['df_summ'].iloc[0,3]))
-    st.text('{:.2%}'.format(f['cs']['df_summ'].iloc[0,4]))
+    st.text('${0:,.0f}'.format(f['cs']['pretty_summ'].data.iloc[0,3]))
+    st.text('{:.2%}'.format(f['cs']['pretty_summ'].data.iloc[0,4]))
     st.dataframe(f['cs']['pretty_summ'])
 
     st.dataframe(f['PPD']['pretty_detail'])
