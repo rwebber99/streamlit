@@ -19,7 +19,7 @@ from matplotlib.ticker import PercentFormatter
 # secrets: https://share.streamlit.io/
 # streamlit run .\streamlit_app.py
 
-url = st.secrets["txAll_url"]
+url = st.secrets["txAll_url"] ## must choose embed from onedrive to get URL
 path = url.replace('view.aspx', 'download.aspx')
 ##
 exchange_names = ['kucoin', 'kraken']
@@ -40,7 +40,12 @@ def update_pricing(TTP):
 def finish_steps(TTP):
     ##
     dfttp = TTP['CostBasis'].copy()
-    dfttp = dfttp.rename({'coin':'Coin', 'quantity':'Quantity', 'unit_cost':'Effective Price', 'total_cost_basis_usd':'USD Amount', 'trade_date':'Date'}, axis=1)
+    dfttp = dfttp.rename({'coin':'Coin', 
+                            'quantity':'Quantity', 
+                            'unit_cost':'Effective Price', 
+                            'total_cost_basis_usd':'USD Amount', 
+                            'trade_date':'Date'}, 
+                            axis=1)
     dfttpsum = dfttp[['order_id', 'Date', 'Coin', 'Quantity', 'USD Amount']].groupby(['order_id', 'Date', 'Coin']).sum()
     dfttpsum['Effective Price'] = abs(dfttpsum['USD Amount'] / dfttpsum['Quantity'])
     dfttpsum = dfttpsum[dfttpsum['Quantity']>0].merge(TTP['Portfolio'][['Current Price']], how='outer', left_index=True, right_index=True)
@@ -53,7 +58,6 @@ def finish_steps(TTP):
     pretty_crypto_trans = dfttpsum.copy().sort_values('Date')
     pretty_crypto_trans = pretty_crypto_trans.reset_index(level=['Date','Coin'])
     pretty_crypto_trans = pretty_crypto_trans.style.format(format_dict).hide_index()
-    # pretty_crypto_trans
 
     ##
     dfplot = dfttpsum.copy().sort_values('Date')
@@ -62,7 +66,6 @@ def finish_steps(TTP):
     if not 'USDT' in excl:
         excl.append('USDT')
     excl_df = dfplot.index.isin(excl)
-#     pltdata = pd.DataFrame({'Investments':dfplot[~excl_df].index, 'Gain/(Loss)':dfplot[~excl_df]['Difference']})
 
     ##
     mask = [len(i)!=19 for i in TTP['CostBasis'].order_id]
@@ -81,38 +84,11 @@ def finish_steps(TTP):
 TTP = read_data(path)
 
 def update_pricing_button(TTP):
-#     if x:
-        text_price_update = 'prices have been updated'
-        TTP['Portfolio'] = update_pricing(TTP)
-        f = finish_steps(TTP)
-#     else:
-#         text_price_update = 'prices have been updated'
-#         dfPortfolio = TTP['CurrentHoldings'].copy()
-#         dfPortfolio['price'] = 1
-#         dfPortfolio.index.names=['Coin']
-#         dfPortfolio = dfPortfolio.rename({'quantity':'Quantity', 'price':'Current Price'}, axis=1)
-#         TTP['Portfolio'] = dfPortfolio.copy()
-#         f = finish_steps(TTP)
-        return(f)
+    text_price_update = 'prices have been updated'
+    TTP['Portfolio'] = update_pricing(TTP)
+    f = finish_steps(TTP)
+    return(f)
 
-# f = update_pricing_button(TTP)
-
-# st.set_option('deprecation.showPyplotGlobalUse', False)
-# st.dataframe(f['cs']['pretty_summ'])
-# st.dataframe(f['PPD']['pretty_detail'])
-
-# plt.figure(figsize=[12, 4.8])
-# plt.bar(f['pltdata'].index, f['pltdata']['Difference'])
-# plt.xticks([])
-# plt.ylabel('Gain/(Loss)')
-# plt.xlabel('Investments')
-# plt.gca().axes.get_yaxis().set_major_formatter(PercentFormatter(xmax=1))
-# st.pyplot(plt)
-# st.pyplot(crypto_fn.PP_port_donut(f['cs']['df_snap_summ']))
-
-# genre = st.sidebar.radio("Reports",
-#                          ('Riches', 'Details', 'Donut', 'Bar'))
-    
 if (st.button('Update Pricing') | True):
     f = update_pricing_button(TTP)
 
@@ -121,13 +97,10 @@ if (st.button('Update Pricing') | True):
     st.text('Gain/(Loss)')
     st.text('${0:,.0f}'.format(f['cs']['df_summ'].iloc[0,3]))
     st.text('{:.2%}'.format(f['cs']['df_summ'].iloc[0,4]))
-#     if (genre=='Riches'):
     st.dataframe(f['cs']['pretty_summ'])
 
-#     elif (genre=='Details'):
     st.dataframe(f['PPD']['pretty_detail'])
 
-#     elif (genre=='Donut'):
     plt.figure(figsize=[12, 4.8])
     plt.bar(f['pltdata'].index, f['pltdata']['Difference'])
     plt.xticks([])
@@ -136,18 +109,8 @@ if (st.button('Update Pricing') | True):
     plt.gca().axes.get_yaxis().set_major_formatter(PercentFormatter(xmax=1))
     st.pyplot(plt)
 
-#     elif (genre=='Bar'):
     st.pyplot(crypto_fn.PP_port_donut(f['cs']['df_snap_summ']))
 
-    
-    
-    
-# st.pyplot(crypto_fn.PP_dollar_by_coin(f['cs']['df_snap_summ']))
-##
-# cs['pretty_summ']
-# PPD['pretty_detail']
-
-# pretty_crypto_trans
 
 
 
